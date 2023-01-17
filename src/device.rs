@@ -343,11 +343,15 @@ impl Device {
     /// is not the same as the one the libinput `Context` was created from.
     #[cfg(feature = "udev")]
     pub unsafe fn udev_device(&self) -> Option<UdevDevice> {
+        use udev::ffi::udev_ref;
+
         let dev: *mut udev_device = ffi::libinput_device_get_udev_device(self.ffi) as *mut _;
-        let ctx: *mut udev_context = udev_device_get_udev(dev);
         if dev.is_null() {
             None
         } else {
+            // We have to ref the returned udev context as udev_device_get_udev does not
+            // increase the ref_count but dropping a UdevDevice will unref it
+            let ctx: *mut udev_context = udev_ref(udev_device_get_udev(dev));
             Some(UdevDevice::from_raw_with_context(ctx, dev))
         }
     }
